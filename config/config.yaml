@@ -1,0 +1,253 @@
+scraping:
+  # Bundesagentur settings
+  bundesagentur:
+    enabled: true
+    locations:
+      - "Berlin"
+      - "Leipzig"
+      - "Dresden"
+      - "München"
+      - "Augsburg"
+      - "Nürnberg"
+      - "Erlangen"
+    radius_km: 50
+    search_terms:
+      - "Data Scientist"
+      - "Machine Learning"
+      - "Data Engineer"
+      - "ML Engineer"
+      - "Data Analyst"
+      - "Business Intelligence"
+      - "Product Manager"
+      - "Business Development"
+    results_per_page: 100
+  
+  # Arbeitnow settings
+  arbeitnow:
+    enabled: true
+    max_pages: 5
+  
+  # RemoteOK settings
+  remoteok:
+    enabled: true
+    tags:
+      - "data"
+      - "python"
+      - "machine-learning"
+
+filtering:
+  # Baseline relevance filter - REMOVE these job types
+  irrelevant_keywords:
+    - "driver"
+    - "fahrer"
+    - "retail"
+    - "verkauf"
+    - "sales assistant"
+    - "warehouse"
+    - "lager"
+    - "delivery"
+    - "kurier"
+    - "cashier"
+    - "kasse"
+    - "cleaner"
+    - "reinigung"
+    - "security guard"
+    - "sicherheitsdienst"
+    - "kitchen"
+    - "küche"
+    - "waiter"
+    - "kellner"
+    - "barista"
+    - "receptionist"
+    - "empfang"
+    - "housekeeping"
+    - "zimmermädchen"
+    - "truck"
+    - "lkw"
+    - "forklift"
+    - "gabelstapler"
+  
+  # Hard filter - these roles are way too senior
+  hard_filter_keywords:
+    - "head of"
+    - "chief"
+    - "cto"
+    - "ceo"
+    - "cfo"
+    - "vp of"
+    - "vice president"
+    - "director of"
+    - "geschäftsführer"
+    - "vorstand"
+  
+  # Experience thresholds
+  user_experience_years: 4
+  hard_filter_experience_years: 10
+  experience_penalty_threshold: 5
+  experience_penalty_points: 2
+  
+  # Only full-time positions
+  job_types:
+    - "full-time"
+    - "vollzeit"
+    - "festanstellung"
+
+scoring:
+  weights:
+    money: 0.33
+    passion: 0.34
+    location: 0.33
+  
+  # Money scoring (0-10 scale)
+  money:
+    salary_thresholds:
+      excellent: 80000
+      great: 65000
+      good: 50000
+      average: 40000
+    
+    seniority_keywords:
+      high:
+        - "senior"
+        - "lead"
+        - "principal"
+        - "staff"
+      medium:
+        - "mid-level"
+        - "intermediate"
+        - "experienced"
+    
+    currency_conversion:
+      USD: 0.92
+      GBP: 1.17
+      CHF: 1.02
+      EUR: 1.0
+  
+  # Passion scoring (0-10 scale)
+  passion:
+    energy_keywords:
+      - "energy"
+      - "renewable"
+      - "grid"
+      - "power"
+      - "electricity"
+      - "utilities"
+      - "energiewende"
+      - "solar"
+      - "wind"
+      - "battery"
+      - "e-mobility"
+      - "charging"
+      - "smart grid"
+      - "energie"
+      - "strom"
+      - "netz"
+    
+    ml_keywords:
+      - "machine learning"
+      - "deep learning"
+      - "optimization"
+      - "transformer"
+      - "neural network"
+      - "artificial intelligence"
+      - "computer vision"
+      - "nlp"
+      - "natural language"
+      - "reinforcement learning"
+      - "data science"
+      - "predictive"
+      - "forecasting"
+      - "ml"
+      - "ai"
+    
+    tech_keywords:
+      - "startup"
+      - "scale-up"
+      - "innovation"
+      - "research"
+      - "r&d"
+      - "cutting-edge"
+      - "state-of-the-art"
+      - "forschung"
+    
+    # Points per match
+    energy_points: 4
+    energy_max: 7
+    ml_points: 3
+    ml_max: 6
+    tech_points: 1
+    tech_max: 3
+    
+    # Title weight multiplier when description is missing
+    title_weight_multiplier: 2.0
+  
+  # Location scoring (0-10 scale)
+  location:
+    tier1_bavaria:
+      score: 10
+      keywords:
+        - "munich"
+        - "münchen"
+        - "augsburg"
+        - "nuremberg"
+        - "nürnberg"
+        - "erlangen"
+        - "regensburg"
+        - "würzburg"
+        - "bavaria"
+        - "bayern"
+    
+    tier2_preferred_germany:
+      score: 8
+      keywords:
+        - "berlin"
+        - "leipzig"
+        - "dresden"
+        - "hamburg"
+        - "frankfurt"
+        - "stuttgart"
+        - "cologne"
+        - "köln"
+        - "düsseldorf"
+    
+    tier3_germany:
+      score: 6
+      keywords:
+        - "germany"
+        - "deutschland"
+    
+    tier4_remote:
+      score: 7
+      keywords:
+        - "remote"
+        - "home office"
+        - "hybrid"
+        - "worldwide"
+        - "anywhere"
+    
+    tier5_europe:
+      score: 4
+      keywords:
+        - "europe"
+        - "eu"
+        - "austria"
+        - "switzerland"
+        - "netherlands"
+    
+    default_score: 2
+
+notification:
+  telegram:
+    max_message_length: 4000
+    max_jobs_per_message: 15
+    sort_by: "score"
+    include_summary: true
+
+database:
+  path: "jobs.db"
+  retention_days: 90
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/scraper.log"
