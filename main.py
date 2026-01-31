@@ -10,7 +10,10 @@ import sys
 import argparse
 import yaml
 from datetime import datetime
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 from src.utils.logger import setup_logger
 from src.scrapers import BundesagenturScraper, ArbeitnowScraper, RemoteOKScraper
 from src.filters import RelevanceFilter, ExperienceFilter
