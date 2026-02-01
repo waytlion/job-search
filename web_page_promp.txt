@@ -1,0 +1,1233 @@
+# 🚀 MEGA PROMPT V2: Build Job Scraper Web Application
+
+## 🎯 MISSION
+You are building a **modern web application** for an existing job scraper system. This web app will:
+1. Display all scraped jobs in a beautiful, filterable interface
+2. Allow the user to mark jobs as Applied/Interested/Not Interested
+3. Show a dashboard with statistics and insights
+4. Provide settings to adjust scoring weights and preferences
+5. Sync new jobs from GitHub Actions artifacts
+6. Run locally first (with optional Docker setup)
+
+**CRITICAL**: You are in **AGENT MODE**. Build the complete web app, test it, refine it, and ensure it works end-to-end. Make reasonable decisions and document them.
+
+---
+
+## 📋 CONTEXT: Existing System
+
+The user already has a **working job scraper** that:
+- Runs daily via GitHub Actions
+- Scrapes 3 APIs: Bundesagentur, Arbeitnow, RemoteOK
+- Stores results in SQLite (`jobs.db`)
+- Sends Telegram notifications
+- Uploads `jobs.db` as GitHub artifact
+
+**Your job**: Build a web interface to VIEW, FILTER, and MANAGE these jobs.
+
+---
+
+## 🏗️ SYSTEM ARCHITECTURE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  JOB SCRAPER WEB APPLICATION                     │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  FRONTEND (React + Next.js 14 + TailwindCSS)              │ │
+│  │  http://localhost:3000                                     │ │
+│  │                                                            │ │
+│  │  Pages:                                                    │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  / (Dashboard)                                       │ │ │
+│  │  │  - Total jobs, avg score, top locations             │ │ │
+│  │  │  - Jobs over time chart (last 7/14/30 days)         │ │ │
+│  │  │  - Top companies list                                │ │ │
+│  │  │  - Quick stats by status (applied, interested, etc) │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  /jobs (Job List - Main Page)                        │ │ │
+│  │  │  - Table view (default) with sortable columns       │ │ │
+│  │  │  - Card view (toggle)                                │ │ │
+│  │  │  - Filters sidebar:                                  │ │ │
+│  │  │    * Score range (slider: 0-10)                     │ │ │
+│  │  │    * Location (multi-select)                        │ │ │
+│  │  │    * Company (autocomplete)                         │ │ │
+│  │  │    * Platform (BA/Arbeitnow/RemoteOK)              │ │ │
+│  │  │    * Status (not_applied/applied/interested/...)   │ │ │
+│  │  │    * Date range (last 7/14/30/90 days)             │ │ │
+│  │  │  - Search bar (full-text search)                    │ │ │
+│  │  │  - Pagination (20 per page, configurable)           │ │ │
+│  │  │  - Quick actions on each row:                       │ │ │
+│  │  │    * Mark as Applied                                │ │ │
+│  │  │    * Mark as Interested                             │ │ │
+│  │  │    * Mark as Not Interested                         │ │ │
+│  │  │    * View Details (modal)                           │ │ │
+│  │  │    * Open URL (new tab)                             │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  /jobs/[id] (Job Details - Modal or Page)           │ │ │
+│  │  │  - Full job description (HTML rendered)             │ │ │
+│  │  │  - Score breakdown visualization:                   │ │ │
+│  │  │    * Money score: 8.5/10 (with explanation)        │ │ │
+│  │  │    * Passion score: 9.0/10 (matched keywords)      │ │ │
+│  │  │    * Location score: 10/10 (Bavaria)               │ │ │
+│  │  │  - Company info (name, location)                    │ │ │
+│  │  │  - All metadata (posted date, scraped date, etc)    │ │ │
+│  │  │  - Similar jobs (same company or location)          │ │ │
+│  │  │  - Action buttons (Apply, Save, Dismiss)            │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  /settings (Settings)                                │ │ │
+│  │  │  - Scoring weights (3 sliders: Money/Passion/Loc)   │ │ │
+│  │  │    * Show example: how a job's score would change  │ │ │
+│  │  │  - Enable/disable scrapers (checkboxes)             │ │ │
+│  │  │  - Location preferences (drag-to-reorder cities)    │ │ │
+│  │  │  - Passion keywords (add/remove)                    │ │ │
+│  │  │  - Sync settings:                                   │ │ │
+│  │  │    * Auto-sync interval (dropdown: Off/1h/6h/24h)  │ │ │
+│  │  │    * Manual sync button (with last sync time)      │ │ │
+│  │  │    * GitHub token input (for artifact download)    │ │ │
+│  │  │  - Save button (recalculates all job scores)        │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  └────────────────────┬───────────────────────────────────────┘ │
+│                       │ REST API (JSON)                          │
+│  ┌────────────────────▼───────────────────────────────────────┐ │
+│  │  BACKEND (FastAPI + SQLAlchemy)                            │ │
+│  │  http://localhost:8000                                     │ │
+│  │                                                            │ │
+│  │  API Routes:                                               │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  GET  /api/jobs                                      │ │ │
+│  │  │       Query params:                                  │ │ │
+│  │  │       - page: int (default: 1)                       │ │ │
+│  │  │       - limit: int (default: 20)                     │ │ │
+│  │  │       - sort: str (score|date|company|title)         │ │ │
+│  │  │       - order: str (asc|desc)                        │ │ │
+│  │  │       - minScore: float (0-10)                       │ │ │
+│  │  │       - maxScore: float (0-10)                       │ │ │
+│  │  │       - locations: str[] (comma-separated)           │ │ │
+│  │  │       - companies: str[] (comma-separated)           │ │ │
+│  │  │       - platforms: str[] (comma-separated)           │ │ │
+│  │  │       - status: str (not_applied|applied|...)        │ │ │
+│  │  │       - dateFrom: date (YYYY-MM-DD)                  │ │ │
+│  │  │       - dateTo: date (YYYY-MM-DD)                    │ │ │
+│  │  │       - search: str (full-text search)               │ │ │
+│  │  │       Response: {jobs: [], total: int, page: int}    │ │ │
+│  │  │                                                       │ │ │
+│  │  │  GET  /api/jobs/{id}                                 │ │ │
+│  │  │       Response: Full job object with all fields      │ │ │
+│  │  │                                                       │ │ │
+│  │  │  PATCH /api/jobs/{id}                                │ │ │
+│  │  │        Body: {user_status?: str, user_notes?: str}   │ │ │
+│  │  │        Updates user-specific fields                  │ │ │
+│  │  │                                                       │ │ │
+│  │  │  GET  /api/stats                                     │ │ │
+│  │  │       Response: {                                    │ │ │
+│  │  │         totalJobs: int,                              │ │ │
+│  │  │         avgScore: float,                             │ │ │
+│  │  │         topLocations: [{name, count}],               │ │ │
+│  │  │         topCompanies: [{name, count}],               │ │ │
+│  │  │         jobsByDate: [{date, count}],                 │ │ │
+│  │  │         jobsByStatus: {applied: int, ...},           │ │ │
+│  │  │         scoreDistribution: [{range, count}]          │ │ │
+│  │  │       }                                              │ │ │
+│  │  │                                                       │ │ │
+│  │  │  POST /api/sync                                      │ │ │
+│  │  │       Downloads latest jobs.db from GitHub Actions   │ │ │
+│  │  │       Response: {                                    │ │ │
+│  │  │         newJobs: int,                                │ │ │
+│  │  │         lastSync: timestamp,                         │ │ │
+│  │  │         errors: str[]                                │ │ │
+│  │  │       }                                              │ │ │
+│  │  │                                                       │ │ │
+│  │  │  GET  /api/config                                    │ │ │
+│  │  │       Returns current config (scoring weights, etc)  │ │ │
+│  │  │                                                       │ │ │
+│  │  │  PUT  /api/config                                    │ │ │
+│  │  │       Body: Updated config object                    │ │ │
+│  │  │       Recalculates all job scores with new weights   │ │ │
+│  │  │       Response: {updated: int, config: {...}}        │ │ │
+│  │  │                                                       │ │ │
+│  │  │  GET  /api/filters/options                           │ │ │
+│  │  │       Returns: {                                     │ │ │
+│  │  │         locations: str[],                            │ │ │
+│  │  │         companies: str[],                            │ │ │
+│  │  │         platforms: str[]                             │ │ │
+│  │  │       }                                              │ │ │
+│  │  │       For populating filter dropdowns                │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  └────────────────────┬───────────────────────────────────────┘ │
+│                       │                                          │
+│  ┌────────────────────▼───────────────────────────────────────┐ │
+│  │  DATABASE (SQLite)                                         │ │
+│  │  File: webapp/backend/jobs.db                              │ │
+│  │                                                            │ │
+│  │  Tables:                                                   │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  jobs (from scraper, extended)                       │ │ │
+│  │  │  - id, job_hash, title, company, location, url      │ │ │
+│  │  │  - platform, description, requirements, tags        │ │ │
+│  │  │  - salary_min, salary_max, salary_currency          │ │ │
+│  │  │  - posted_date, scraped_at                          │ │ │
+│  │  │  - money_score, passion_score, location_score       │ │ │
+│  │  │  - total_score                                      │ │ │
+│  │  │  - years_experience_required                        │ │ │
+│  │  │  - filtered_out, filter_reason                      │ │ │
+│  │  │  - user_status (NEW: enum)                          │ │ │
+│  │  │    * "not_applied" (default)                        │ │ │
+│  │  │    * "applied"                                      │ │ │
+│  │  │    * "interested"                                   │ │ │
+│  │  │    * "not_interested"                               │ │ │
+│  │  │    * "archived"                                     │ │ │
+│  │  │  - user_notes (NEW: TEXT)                           │ │ │
+│  │  │  - user_updated_at (NEW: TIMESTAMP)                 │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  sync_history (NEW)                                  │ │ │
+│  │  │  - id                                                │ │ │
+│  │  │  - timestamp                                         │ │ │
+│  │  │  - jobs_imported (int)                               │ │ │
+│  │  │  - source (str: "github_artifact" | "manual")       │ │ │
+│  │  │  - errors (TEXT, JSON)                               │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  │                                                            │ │
+│  │  ┌──────────────────────────────────────────────────────┐ │ │
+│  │  │  config_snapshots (NEW)                              │ │ │
+│  │  │  - id                                                │ │ │
+│  │  │  - timestamp                                         │ │ │
+│  │  │  - config (TEXT, JSON)                               │ │ │
+│  │  │  - description (str: "Increased money weight")      │ │ │
+│  │  └──────────────────────────────────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────────────────────────────────┐
+         │  GitHub Actions (Separate System)        │
+         │  - Runs scraper daily                    │
+         │  - Uploads jobs.db as artifact           │
+         │  - Web app downloads via GitHub API      │
+         └──────────────────────────────────────────┘
+```
+
+---
+
+## 📁 PROJECT STRUCTURE
+
+```
+job-scraper/                         # Root (existing repo)
+│
+├── scraper/                         # Existing scraper (keep as-is)
+│   ├── src/
+│   ├── config/
+│   ├── main.py
+│   └── requirements.txt
+│
+├── webapp/                          # NEW: Web application
+│   │
+│   ├── frontend/                    # React + Next.js
+│   │   ├── src/
+│   │   │   ├── app/                # Next.js 14 app directory
+│   │   │   │   ├── layout.tsx      # Root layout
+│   │   │   │   ├── page.tsx        # Dashboard (/)
+│   │   │   │   ├── jobs/
+│   │   │   │   │   ├── page.tsx    # Job list (/jobs)
+│   │   │   │   │   └── [id]/
+│   │   │   │   │       └── page.tsx # Job details (/jobs/123)
+│   │   │   │   ├── settings/
+│   │   │   │   │   └── page.tsx    # Settings (/settings)
+│   │   │   │   └── globals.css     # Global styles
+│   │   │   │
+│   │   │   ├── components/         # Reusable components
+│   │   │   │   ├── layout/
+│   │   │   │   │   ├── Header.tsx
+│   │   │   │   │   ├── Sidebar.tsx
+│   │   │   │   │   └── Footer.tsx
+│   │   │   │   ├── jobs/
+│   │   │   │   │   ├── JobTable.tsx
+│   │   │   │   │   ├── JobCard.tsx
+│   │   │   │   │   ├── JobDetails.tsx
+│   │   │   │   │   └── JobActions.tsx
+│   │   │   │   ├── filters/
+│   │   │   │   │   ├── FiltersSidebar.tsx
+│   │   │   │   │   ├── SearchBar.tsx
+│   │   │   │   │   └── SortControls.tsx
+│   │   │   │   ├── dashboard/
+│   │   │   │   │   ├── StatsCard.tsx
+│   │   │   │   │   ├── JobsChart.tsx
+│   │   │   │   │   └── TopCompanies.tsx
+│   │   │   │   ├── settings/
+│   │   │   │   │   ├── ScoringWeights.tsx
+│   │   │   │   │   ├── SyncSettings.tsx
+│   │   │   │   │   └── ScraperToggles.tsx
+│   │   │   │   └── ui/            # Base UI components
+│   │   │   │       ├── Button.tsx
+│   │   │   │       ├── Card.tsx
+│   │   │   │       ├── Badge.tsx
+│   │   │   │       ├── Slider.tsx
+│   │   │   │       ├── Modal.tsx
+│   │   │   │       └── Tooltip.tsx
+│   │   │   │
+│   │   │   ├── lib/               # Utilities
+│   │   │   │   ├── api.ts         # API client
+│   │   │   │   ├── utils.ts       # Helper functions
+│   │   │   │   └── constants.ts   # Constants
+│   │   │   │
+│   │   │   └── types/             # TypeScript types
+│   │   │       ├── job.ts
+│   │   │       ├── stats.ts
+│   │   │       └── config.ts
+│   │   │
+│   │   ├── public/                # Static assets
+│   │   │   └── favicon.ico
+│   │   │
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── next.config.js
+│   │   ├── tailwind.config.js
+│   │   ├── postcss.config.js
+│   │   └── README.md
+│   │
+│   ├── backend/                   # FastAPI
+│   │   ├── app/
+│   │   │   ├── main.py           # FastAPI app entry point
+│   │   │   │
+│   │   │   ├── models/           # Pydantic models
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── job.py
+│   │   │   │   ├── stats.py
+│   │   │   │   └── config.py
+│   │   │   │
+│   │   │   ├── database/         # Database layer
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── connection.py # SQLite connection
+│   │   │   │   └── migrations.py # Schema migrations
+│   │   │   │
+│   │   │   ├── routes/           # API endpoints
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── jobs.py       # /api/jobs/*
+│   │   │   │   ├── stats.py      # /api/stats
+│   │   │   │   ├── config.py     # /api/config
+│   │   │   │   ├── sync.py       # /api/sync
+│   │   │   │   └── filters.py    # /api/filters/options
+│   │   │   │
+│   │   │   ├── services/         # Business logic
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── job_service.py
+│   │   │   │   ├── stats_service.py
+│   │   │   │   ├── github_sync.py    # Download artifacts
+│   │   │   │   ├── scorer.py         # Recalculate scores
+│   │   │   │   └── search.py         # Full-text search
+│   │   │   │
+│   │   │   └── utils/            # Utilities
+│   │   │       ├── __init__.py
+│   │   │       ├── logger.py
+│   │   │       └── config_loader.py
+│   │   │
+│   │   ├── tests/                # Tests
+│   │   │   ├── test_jobs.py
+│   │   │   ├── test_stats.py
+│   │   │   └── test_sync.py
+│   │   │
+│   │   ├── requirements.txt
+│   │   ├── .env.example
+│   │   └── README.md
+│   │
+│   ├── docker-compose.yml        # OPTIONAL: Run both services
+│   ├── Dockerfile.frontend       # OPTIONAL
+│   ├── Dockerfile.backend        # OPTIONAL
+│   └── README.md                 # Setup instructions
+│
+├── shared/                       # Shared config
+│   └── config.yaml              # Same as scraper's config
+│
+└── README.md                     # Root readme
+```
+
+---
+
+## 🎨 UI/UX DESIGN SPECIFICATIONS
+
+### Design System: Minimalist & Clean
+
+**Color Palette:**
+```css
+/* Primary */
+--background: #ffffff
+--foreground: #0a0a0a
+
+/* Scores */
+--score-excellent: #10b981  /* Green: 9-10 */
+--score-good: #3b82f6       /* Blue: 7-8.9 */
+--score-okay: #f59e0b       /* Amber: 5-6.9 */
+--score-low: #9ca3af        /* Gray: <5 */
+
+/* Status */
+--status-applied: #8b5cf6    /* Purple */
+--status-interested: #06b6d4 /* Cyan */
+--status-not-interested: #ef4444 /* Red */
+
+/* UI Elements */
+--border: #e5e7eb
+--muted: #f3f4f6
+--accent: #3b82f6
+```
+
+**Typography:**
+- Font: Inter (clean, modern, readable)
+- Headers: Font weight 600-700
+- Body: Font weight 400
+- Code/Numbers: Font weight 500
+
+**Spacing:**
+- Generous whitespace (padding: 24px-32px for containers)
+- Consistent 8px grid system
+
+**Components:**
+- Rounded corners: 8px (cards), 6px (buttons), 4px (inputs)
+- Subtle shadows: No heavy drop-shadows, use border + light shadow
+- Hover states: Slight background change + border color change
+- Transitions: 150ms ease-in-out
+
+**Icons:**
+- Use Lucide React (minimalist icon set)
+- Size: 20px (default), 16px (small), 24px (large)
+
+---
+
+### Page Layouts
+
+#### Dashboard (`/`)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Header                                    [Settings] ⚙️ │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  📊 Dashboard                                            │
+│                                                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │  Total   │ │   Avg    │ │   New    │ │ Applied  │  │
+│  │   Jobs   │ │  Score   │ │  Today   │ │   Jobs   │  │
+│  │   247    │ │   7.8    │ │    12    │ │    34    │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Jobs Over Time                                    │ │
+│  │  [Chart: Line graph showing jobs/day last 30d]    │ │
+│  │                                                    │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐│
+│  │  Top Locations       │  │  Top Companies           ││
+│  │  Munich (45)         │  │  Siemens Energy (8)      ││
+│  │  Berlin (38)         │  │  BMW Group (7)           ││
+│  │  Leipzig (22)        │  │  HelloFresh (5)          ││
+│  └──────────────────────┘  └──────────────────────────┘│
+│                                                          │
+│  [View All Jobs →]                                       │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Job List (`/jobs`)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Header                      🔍 Search...    [Settings] │
+├──────────┬──────────────────────────────────────────────┤
+│ Filters  │  📋 Jobs (247)          [Table] [Cards]      │
+│          │                                               │
+│ Score    │  ┌─────────────────────────────────────────┐ │
+│ ━━━━○━━━ │  │ Score │ Title          │ Company │ Loc  │ │
+│ 0    10  │  ├───────┼────────────────┼─────────┼──────┤ │
+│          │  │ 9.5⭐ │ Senior Data... │ Siemens │ Mun. │ │
+│ Location │  │ 9.2⭐ │ Lead ML Eng... │ BMW     │ Mun. │ │
+│ ☑ Munich │  │ 8.7⭐ │ Data Engineer  │ Eon     │ Ber. │ │
+│ ☑ Berlin │  │ ...                                       │ │
+│ ☐ Remote │  └─────────────────────────────────────────┘ │
+│          │                                               │
+│ Company  │  Showing 1-20 of 247      [← 1 2 3 ... 13 →]│
+│ [Search] │                                               │
+│          │                                               │
+│ Status   │                                               │
+│ ○ All    │                                               │
+│ ○ Not... │                                               │
+│ ○ Apply..│                                               │
+│          │                                               │
+│ [Reset]  │                                               │
+└──────────┴──────────────────────────────────────────────┘
+```
+
+#### Job Details (Modal)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Senior Data Scientist - Energy Grid Optimization    ✕ │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  🏢 Siemens Energy                                       │
+│  📍 Munich, Bavaria                                      │
+│  💰 €75,000 - €95,000                                    │
+│  📅 Posted: 2026-01-30 | Scraped: 2026-01-31            │
+│                                                          │
+│  ─────────────────────────────────────────────────────  │
+│                                                          │
+│  📊 Score Breakdown (Total: 9.5/10)                      │
+│                                                          │
+│  💰 Money:    8.5/10  ████████▌░                        │
+│      High salary range + senior title                   │
+│                                                          │
+│  ❤️  Passion:  9.0/10  █████████░                        │
+│      Energy ✓ Grid ✓ Optimization ✓ ML ✓               │
+│                                                          │
+│  📍 Location: 10/10   ██████████                         │
+│      Munich (Bavaria - Tier 1)                          │
+│                                                          │
+│  ─────────────────────────────────────────────────────  │
+│                                                          │
+│  📄 Description:                                         │
+│  [Full HTML description rendered here...]               │
+│                                                          │
+│  ─────────────────────────────────────────────────────  │
+│                                                          │
+│  [✓ Mark as Applied]  [⭐ Interested]  [✕ Not Int.]     │
+│  [🔗 Open Job Posting]                                   │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Settings (`/settings`)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ⚙️ Settings                                             │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  🎯 Scoring Weights                                      │
+│                                                          │
+│  💰 Money (33%)                                          │
+│  ━━━━━━○━━━━━━━━━━━━━━━━━━━━━━━                        │
+│  0%                                                100%  │
+│                                                          │
+│  ❤️  Passion (34%)                                       │
+│  ━━━━━━━○━━━━━━━━━━━━━━━━━━━━━━                        │
+│                                                          │
+│  📍 Location (33%)                                       │
+│  ━━━━━━━○━━━━━━━━━━━━━━━━━━━━━━                        │
+│                                                          │
+│  💡 Preview: A job in Munich energy sector with €80k    │
+│      salary would score: 9.2/10 → 9.4/10 with changes   │
+│                                                          │
+│  ─────────────────────────────────────────────────────  │
+│                                                          │
+│  🔄 Sync Settings                                        │
+│                                                          │
+│  Auto-sync interval: [Every 1 hour ▼]                   │
+│  Last synced: 2 hours ago                               │
+│                                                          │
+│  GitHub Token: [••••••••••••••••••]                     │
+│  (Required to download job artifacts from GitHub)        │
+│                                                          │
+│  [Sync Now]                                             │
+│                                                          │
+│  ─────────────────────────────────────────────────────  │
+│                                                          │
+│  [Save Changes]  [Reset to Defaults]                    │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔧 TECHNICAL IMPLEMENTATION DETAILS
+
+### Frontend (React + Next.js)
+
+**Key Libraries:**
+```json
+{
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@tanstack/react-query": "^5.0.0",  // Data fetching
+    "axios": "^1.6.0",                   // HTTP client
+    "lucide-react": "^0.300.0",          // Icons
+    "recharts": "^2.10.0",               // Charts
+    "date-fns": "^3.0.0",                // Date formatting
+    "clsx": "^2.0.0",                    // Classnames utility
+    "tailwindcss": "^3.4.0",
+    "tailwind-merge": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/react": "^18.2.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0"
+  }
+}
+```
+
+**API Client Pattern:**
+```typescript
+// lib/api.ts
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const jobsApi = {
+  getJobs: (params: JobQueryParams) => 
+    api.get<JobsResponse>('/api/jobs', { params }),
+  
+  getJob: (id: number) => 
+    api.get<Job>(`/api/jobs/${id}`),
+  
+  updateJob: (id: number, data: Partial<Job>) =>
+    api.patch<Job>(`/api/jobs/${id}`, data),
+  
+  getStats: () =>
+    api.get<Stats>('/api/stats'),
+  
+  syncJobs: () =>
+    api.post<SyncResponse>('/api/sync'),
+  
+  getConfig: () =>
+    api.get<Config>('/api/config'),
+  
+  updateConfig: (config: Config) =>
+    api.put<Config>('/api/config', config),
+};
+```
+
+**State Management:**
+- Use React Query for server state (jobs, stats)
+- Use React Context for global UI state (filters, preferences)
+- Use local state (useState) for component-specific state
+
+**Filtering Pattern:**
+```typescript
+// In /jobs page
+const [filters, setFilters] = useState<Filters>({
+  minScore: 0,
+  maxScore: 10,
+  locations: [],
+  companies: [],
+  status: 'all',
+  // ...
+});
+
+const { data, isLoading } = useQuery({
+  queryKey: ['jobs', filters, page],
+  queryFn: () => jobsApi.getJobs({ ...filters, page }),
+});
+```
+
+---
+
+### Backend (FastAPI)
+
+**Key Libraries:**
+```txt
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.0
+sqlalchemy==2.0.25
+python-dotenv==1.0.0
+httpx==0.26.0              # For GitHub API calls
+PyJWT==2.8.0               # For GitHub token handling
+python-multipart==0.0.6
+```
+
+**Database Connection:**
+```python
+# app/database/connection.py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./jobs.db")
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}  # SQLite specific
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+**Job Model (Pydantic):**
+```python
+# app/models/job.py
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+from enum import Enum
+
+class UserStatus(str, Enum):
+    NOT_APPLIED = "not_applied"
+    APPLIED = "applied"
+    INTERESTED = "interested"
+    NOT_INTERESTED = "not_interested"
+    ARCHIVED = "archived"
+
+class JobBase(BaseModel):
+    title: str
+    company: str
+    location: Optional[str]
+    url: str
+    platform: str
+    description: Optional[str]
+    salary_min: Optional[int]
+    salary_max: Optional[int]
+    salary_currency: Optional[str]
+    posted_date: Optional[str]
+    money_score: float
+    passion_score: float
+    location_score: float
+    total_score: float
+
+class Job(JobBase):
+    id: int
+    job_hash: str
+    scraped_at: datetime
+    user_status: UserStatus = UserStatus.NOT_APPLIED
+    user_notes: Optional[str]
+    user_updated_at: Optional[datetime]
+    
+    class Config:
+        from_attributes = True
+
+class JobUpdate(BaseModel):
+    user_status: Optional[UserStatus]
+    user_notes: Optional[str]
+
+class JobQueryParams(BaseModel):
+    page: int = 1
+    limit: int = 20
+    sort: str = "total_score"
+    order: str = "desc"
+    minScore: Optional[float] = None
+    maxScore: Optional[float] = None
+    locations: Optional[List[str]] = None
+    companies: Optional[List[str]] = None
+    platforms: Optional[List[str]] = None
+    status: Optional[UserStatus] = None
+    dateFrom: Optional[str] = None
+    dateTo: Optional[str] = None
+    search: Optional[str] = None
+```
+
+**Jobs Endpoint:**
+```python
+# app/routes/jobs.py
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from app.database.connection import get_db
+from app.models.job import Job, JobQueryParams, JobUpdate
+from app.services.job_service import JobService
+
+router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+@router.get("/", response_model=dict)
+async def get_jobs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    sort: str = Query("total_score"),
+    order: str = Query("desc"),
+    minScore: Optional[float] = Query(None, ge=0, le=10),
+    maxScore: Optional[float] = Query(None, ge=0, le=10),
+    locations: Optional[str] = Query(None),  # Comma-separated
+    companies: Optional[str] = Query(None),
+    platforms: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    dateFrom: Optional[str] = Query(None),
+    dateTo: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Get paginated, filtered jobs"""
+    params = JobQueryParams(
+        page=page,
+        limit=limit,
+        sort=sort,
+        order=order,
+        minScore=minScore,
+        maxScore=maxScore,
+        locations=locations.split(",") if locations else None,
+        companies=companies.split(",") if companies else None,
+        platforms=platforms.split(",") if platforms else None,
+        status=status,
+        dateFrom=dateFrom,
+        dateTo=dateTo,
+        search=search
+    )
+    
+    service = JobService(db)
+    result = service.get_jobs(params)
+    
+    return {
+        "jobs": result["jobs"],
+        "total": result["total"],
+        "page": page,
+        "limit": limit,
+        "totalPages": (result["total"] + limit - 1) // limit
+    }
+
+@router.get("/{job_id}", response_model=Job)
+async def get_job(job_id: int, db: Session = Depends(get_db)):
+    """Get single job by ID"""
+    service = JobService(db)
+    return service.get_job(job_id)
+
+@router.patch("/{job_id}", response_model=Job)
+async def update_job(
+    job_id: int,
+    update: JobUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update job user status/notes"""
+    service = JobService(db)
+    return service.update_job(job_id, update)
+```
+
+**GitHub Sync Service:**
+```python
+# app/services/github_sync.py
+import httpx
+import os
+from datetime import datetime
+from app.database.connection import SessionLocal
+
+class GitHubSyncService:
+    def __init__(self):
+        self.token = os.getenv("GITHUB_TOKEN")
+        self.repo = os.getenv("GITHUB_REPO")  # e.g., "username/job-scraper"
+    
+    async def download_latest_artifact(self):
+        """Download latest jobs.db from GitHub Actions artifacts"""
+        if not self.token or not self.repo:
+            raise ValueError("GitHub token or repo not configured")
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/vnd.github+json"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            # 1. Get latest workflow run
+            url = f"https://api.github.com/repos/{self.repo}/actions/runs"
+            response = await client.get(url, headers=headers)
+            runs = response.json()["workflow_runs"]
+            
+            if not runs:
+                raise ValueError("No workflow runs found")
+            
+            latest_run = runs[0]
+            
+            # 2. Get artifacts from this run
+            artifacts_url = latest_run["artifacts_url"]
+            response = await client.get(artifacts_url, headers=headers)
+            artifacts = response.json()["artifacts"]
+            
+            # 3. Find jobs-database artifact
+            db_artifact = next(
+                (a for a in artifacts if a["name"] == "jobs-database"),
+                None
+            )
+            
+            if not db_artifact:
+                raise ValueError("jobs-database artifact not found")
+            
+            # 4. Download artifact
+            download_url = db_artifact["archive_download_url"]
+            response = await client.get(download_url, headers=headers)
+            
+            # 5. Extract and save (it's a zip file)
+            import zipfile
+            import io
+            
+            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                z.extract("jobs.db", path="./temp/")
+            
+            return "./temp/jobs.db"
+    
+    async def import_jobs(self, db_path: str):
+        """Import jobs from downloaded DB into main DB"""
+        import sqlite3
+        
+        # Connect to downloaded DB
+        temp_conn = sqlite3.connect(db_path)
+        temp_cursor = temp_conn.cursor()
+        
+        # Get all jobs
+        temp_cursor.execute("SELECT * FROM jobs WHERE sent_to_user = 1")
+        jobs = temp_cursor.fetchall()
+        
+        # Import into main DB
+        db = SessionLocal()
+        imported = 0
+        
+        for job_data in jobs:
+            # Check if job already exists (by job_hash)
+            existing = db.execute(
+                "SELECT id FROM jobs WHERE job_hash = ?",
+                (job_data[1],)  # job_hash is column 1
+            ).fetchone()
+            
+            if not existing:
+                # Insert new job
+                db.execute(
+                    """INSERT INTO jobs (...) VALUES (...)""",
+                    job_data
+                )
+                imported += 1
+        
+        db.commit()
+        temp_conn.close()
+        
+        # Clean up temp file
+        os.remove(db_path)
+        
+        return imported
+```
+
+---
+
+## 🧪 TESTING STRATEGY
+
+### Phase 1: Backend Testing (Local)
+```bash
+cd webapp/backend
+
+# 1. Start backend
+uvicorn app.main:app --reload
+
+# 2. Test endpoints
+curl http://localhost:8000/api/jobs
+curl http://localhost:8000/api/stats
+curl http://localhost:8000/api/filters/options
+
+# 3. Test with dummy data
+python -m pytest tests/
+```
+
+### Phase 2: Frontend Testing (Local)
+```bash
+cd webapp/frontend
+
+# 1. Start frontend
+npm run dev
+
+# 2. Open browser: http://localhost:3000
+
+# 3. Test pages:
+# - Dashboard loads with stats
+# - Job list shows jobs
+# - Filters work
+# - Sorting works
+# - Job details modal opens
+# - Settings can be updated
+```
+
+### Phase 3: Integration Testing
+```bash
+# Run both together
+docker-compose up  # If using Docker
+
+# OR manually:
+# Terminal 1: cd webapp/backend && uvicorn app.main:app --reload
+# Terminal 2: cd webapp/frontend && npm run dev
+
+# Test full flow:
+# 1. View jobs
+# 2. Filter by location
+# 3. Mark job as applied
+# 4. Check dashboard updates
+# 5. Change scoring weights
+# 6. Verify scores recalculate
+```
+
+### Phase 4: Sync Testing
+```bash
+# 1. Ensure GitHub token is set
+export GITHUB_TOKEN=your_token_here
+export GITHUB_REPO=username/job-scraper
+
+# 2. Trigger sync from Settings page
+# 3. Verify new jobs appear
+# 4. Check sync_history table
+```
+
+---
+
+## 📦 SETUP INSTRUCTIONS
+
+### Without Docker (Recommended to Start)
+
+**1. Backend Setup:**
+```bash
+cd webapp/backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file
+cp .env.example .env
+# Edit .env and add:
+# DATABASE_URL=sqlite:///./jobs.db
+# GITHUB_TOKEN=your_token_here
+# GITHUB_REPO=username/job-scraper
+
+# Initialize database (migrations)
+python -m app.database.migrations
+
+# Start server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**2. Frontend Setup:**
+```bash
+cd webapp/frontend
+
+# Install dependencies
+npm install
+
+# Create .env.local file
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+
+# Start dev server
+npm run dev
+```
+
+**3. Access the app:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+---
+
+### With Docker (Optional)
+
+**docker-compose.yml:**
+```yaml
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./webapp/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/jobs.db
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+    volumes:
+      - ./webapp/backend/data:/app/data
+      - ./shared/config.yaml:/app/config.yaml
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  
+  frontend:
+    build:
+      context: ./webapp/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    command: npm run dev
+```
+
+**Usage:**
+```bash
+# Start both services
+docker-compose up
+
+# Stop
+docker-compose down
+```
+
+---
+
+## ✅ SUCCESS CRITERIA
+
+Your web app is successful when:
+
+1. **✅ All pages load correctly**
+   - Dashboard shows accurate stats
+   - Job list displays all jobs
+   - Filters work and update results
+   - Settings page allows configuration changes
+
+2. **✅ Data flows correctly**
+   - Backend serves jobs from database
+   - Frontend displays jobs beautifully
+   - Filtering/sorting happens server-side (fast)
+   - Pagination works smoothly
+
+3. **✅ User actions work**
+   - Can mark jobs as applied/interested
+   - Status updates persist
+   - Dashboard reflects status changes
+
+4. **✅ Scoring is transparent**
+   - Job details show score breakdown
+   - Settings allow weight adjustments
+   - Changing weights recalculates scores
+   - Preview shows impact of changes
+
+5. **✅ Sync works reliably**
+   - Can download jobs from GitHub
+   - No duplicate imports
+   - Sync history is tracked
+   - Errors are handled gracefully
+
+6. **✅ UI is polished**
+   - Minimalist, clean design
+   - Responsive (works on mobile)
+   - Fast and snappy
+   - No console errors
+
+7. **✅ Code quality**
+   - TypeScript types everywhere (frontend)
+   - Type hints everywhere (backend)
+   - Clean, documented code
+   - Easy to extend
+
+---
+
+## 🚨 COMMON PITFALLS TO AVOID
+
+1. **CORS Issues**
+   - Add CORS middleware to FastAPI
+   - Allow localhost:3000 origin during development
+
+2. **Database Schema Mismatch**
+   - Ensure backend schema matches scraper's schema
+   - Add new columns (user_status, etc.) with migrations
+   - Don't break existing scraper functionality
+
+3. **Large Payloads**
+   - Don't send full descriptions in job list
+   - Use pagination (20 per page)
+   - Load full details only when needed
+
+4. **Filter Performance**
+   - Add database indexes on commonly filtered columns
+   - Do filtering in SQL, not in Python/JS
+
+5. **Date Formatting**
+   - Use ISO 8601 format for API (YYYY-MM-DD)
+   - Use date-fns for display formatting
+   - Handle timezones correctly
+
+6. **GitHub API Rate Limits**
+   - Cache artifact downloads
+   - Don't sync too frequently
+   - Handle 403 errors gracefully
+
+7. **State Management**
+   - Don't duplicate state between components
+   - Use React Query for server state
+   - Invalidate queries after mutations
+
+---
+
+## 🎯 DELIVERABLES
+
+When you're done, the `webapp/` directory should contain:
+
+1. **Working frontend** (Next.js + React)
+   - All 4 pages functional
+   - Components well-organized
+   - TypeScript types defined
+   - Responsive design
+
+2. **Working backend** (FastAPI)
+   - All API endpoints functional
+   - Database operations working
+   - GitHub sync working
+   - Error handling robust
+
+3. **Documentation**
+   - README.md with setup instructions
+   - API documentation (auto-generated by FastAPI)
+   - Component documentation (comments)
+
+4. **Configuration**
+   - .env.example files
+   - docker-compose.yml (optional but recommended)
+   - package.json / requirements.txt
+
+5. **Database Migrations**
+   - Script to add new columns to existing jobs.db
+   - Doesn't break scraper functionality
+
+---
+
+## 🤖 AGENT MODE REMINDER
+
+You are in **AGENT MODE**. This means:
+- Build the complete web app without asking permission at each step
+- Make reasonable decisions about:
+  - Component structure
+  - API endpoint design
+  - UI layout details
+  - Error messages
+- Test thoroughly and fix issues yourself
+- Only ask for clarification if truly stuck on a design decision
+- Aim for a fully working web app that the user can run locally
+
+**IMPORTANT DESIGN DECISIONS YOU SHOULD MAKE:**
+- Exact UI component breakdown
+- API response formats
+- Error handling strategies
+- Loading states and spinners
+- Empty states and placeholders
+- Default values for filters/settings
+
+**START BUILDING NOW!** 💪
+
+---
+
+## 📝 FINAL NOTES
+
+- **Start simple**: Get basic job list working first, then add features
+- **Test incrementally**: Don't build everything then test
+- **Mobile-friendly**: Use Tailwind's responsive utilities
+- **Accessibility**: Use semantic HTML, proper ARIA labels
+- **Performance**: Lazy load components, optimize images
+- **Security**: Validate inputs, sanitize HTML descriptions
+
+The user wants a **polished, minimalist web app** that makes job hunting enjoyable. Focus on:
+- Clean, spacious layout
+- Fast, responsive UI
+- Clear visual hierarchy
+- Helpful feedback (loading states, success messages)
+
+Good luck! 🚀

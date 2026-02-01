@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Job card hover effect */
+.job-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.job-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Score badge colors */
+.score-excellent {
+  @apply bg-green-100 text-green-800;
+}
+
+.score-good {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.score-average {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.score-poor {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Status badges */
+.status-not_viewed {
+  @apply bg-gray-100 text-gray-700;
+}
+
+.status-interested {
+  @apply bg-blue-100 text-blue-700;
+}
+
+.status-applied {
+  @apply bg-green-100 text-green-700;
+}
+
+.status-not_interested {
+  @apply bg-orange-100 text-orange-700;
+}
+
+.status-archived {
+  @apply bg-slate-100 text-slate-700;
+}
