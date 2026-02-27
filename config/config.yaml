@@ -21,6 +21,8 @@ scraping:
       - "Product Manager"
       - "Business Development"
     results_per_page: 100
+    fetch_descriptions: true      # Fetch full job descriptions for better scoring
+    max_description_fetches: 50   # Limit to avoid rate-limiting
   
   # Arbeitnow settings
   arbeitnow:
@@ -34,6 +36,45 @@ scraping:
       - "data"
       - "python"
       - "machine-learning"
+  
+  # Jobicy settings (remote jobs, no API key needed)
+  jobicy:
+    enabled: true
+    tags:
+      - "data-science"
+      - "machine-learning"
+      - "python"
+      - "data-engineering"
+    results_per_tag: 50
+  
+  # The Muse settings (tech company jobs, no API key needed)
+  themuse:
+    enabled: true
+    categories:
+      - "Data Science"
+      - "Data and Analytics"
+      - "Software Engineering"
+    max_pages: 3
+  
+  # WeWorkRemotely settings (RSS feeds, no API key needed)
+  weworkremotely:
+    enabled: true
+    feeds:
+      - "https://weworkremotely.com/categories/remote-programming-jobs.rss"
+      - "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss"
+  
+  # Adzuna settings (requires free API key from https://developer.adzuna.com/)
+  # Set ADZUNA_APP_ID and ADZUNA_APP_KEY in .env to enable
+  adzuna:
+    enabled: true
+    countries:
+      - "de"           # Germany
+      - "gb"           # UK
+    search_terms:
+      - "data scientist"
+      - "machine learning engineer"
+    max_pages: 2
+    results_per_page: 50
 
 filtering:
   # Baseline relevance filter - REMOVE these job types
@@ -240,6 +281,7 @@ notification:
   telegram:
     max_message_length: 4000
     max_jobs_per_message: 15
+    daily_top_n: 15            # Only send the top N scored jobs to Telegram each day
     sort_by: "score"
     include_summary: true
 

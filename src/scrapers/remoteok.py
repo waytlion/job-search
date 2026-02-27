@@ -1,9 +1,8 @@
-import requests
 import time
 from typing import List, Optional
 from datetime import datetime
 import html2text
-from .base import BaseScraper, Job
+from .base import BaseScraper, Job, resilient_request
 from src.utils.logger import get_logger
 
 logger = get_logger()
@@ -60,27 +59,25 @@ class RemoteOKScraper(BaseScraper):
         """Fetch jobs for a specific tag."""
         url = f"{self.BASE_URL}?tag={tag}"
         
-        try:
-            response = requests.get(
-                url,
-                headers=self.HEADERS,
-                timeout=30
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            jobs = []
-            # Skip index 0 (legal text)
-            for item in data[1:]:
-                job = self._parse_job(item)
-                if job:
-                    jobs.append(job)
-            
-            return jobs
-            
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Request failed for tag {tag}: {e}")
-            raise
+        response = resilient_request(
+            url,
+            headers=self.HEADERS,
+            timeout=30,
+            platform_name=self.platform_name,
+        )
+        
+        if response is None:
+            return []
+        
+        data = response.json()
+        jobs = []
+        # Skip index 0 (legal text)
+        for item in data[1:]:
+            job = self._parse_job(item)
+            if job:
+                jobs.append(job)
+        
+        return jobs
     
     def _parse_job(self, item: dict) -> Optional[Job]:
         """Parse a single job item from the API response."""

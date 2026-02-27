@@ -7,8 +7,17 @@ import clsx from 'clsx'
 
 interface JobCardProps {
   job: Job
+  rank?: number
   onClick: () => void
   onStatusChange: () => void
+}
+
+function getRankStyle(rank: number): string {
+  if (rank === 1) return 'bg-yellow-400 text-yellow-900'   // Gold
+  if (rank === 2) return 'bg-gray-300 text-gray-800'       // Silver
+  if (rank === 3) return 'bg-amber-600 text-amber-50'      // Bronze
+  if (rank <= 10) return 'bg-primary-100 text-primary-700'
+  return 'bg-gray-100 text-gray-600'
 }
 
 const statusOptions = [
@@ -26,7 +35,7 @@ function getScoreColor(score: number): string {
   return 'text-red-600 bg-red-50'
 }
 
-export function JobCard({ job, onClick, onStatusChange }: JobCardProps) {
+export function JobCard({ job, rank, onClick, onStatusChange }: JobCardProps) {
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     e.stopPropagation()
     const newStatus = e.target.value
@@ -46,6 +55,15 @@ export function JobCard({ job, onClick, onStatusChange }: JobCardProps) {
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-4">
+        {/* Rank badge */}
+        {rank != null && (
+          <div className={clsx(
+            'flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm',
+            getRankStyle(rank)
+          )}>
+            #{rank}
+          </div>
+        )}
         {/* Left side - Job info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

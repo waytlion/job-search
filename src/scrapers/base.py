@@ -3,7 +3,98 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 from datetime import datetime
 import hashlib
+import time
+import requests
+from src.utils.logger import get_logger
 
+logger = get_logger()
+
+
+# ---------------------------------------------------------------------------
+# Resilience helpers
+# ---------------------------------------------------------------------------
+
+def resilient_request(
+    url: str,
+    *,
+    method: str = "GET",
+    headers: dict = None,
+    params: dict = None,
+    json_body: dict = None,
+    timeout: int = 30,
+    max_retries: int = 3,
+    backoff_base: float = 2.0,
+    platform_name: str = "unknown",
+) -> Optional[requests.Response]:
+    """
+    HTTP request with retry, exponential backoff, and smart error handling.
+
+    Returns the Response on success, or None if all retries are exhausted or
+    the server returns a non-retryable status (401, 403, 404, 451).
+    Never raises — always returns None on failure so the pipeline continues.
+    """
+    NON_RETRYABLE = {401, 403, 404, 451}
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.request(
+                method,
+                url,
+                headers=headers,
+                params=params,
+                json=json_body,
+                timeout=timeout,
+                allow_redirects=True,
+            )
+
+            # Non-retryable client errors (bot detection, forbidden, gone)
+            if response.status_code in NON_RETRYABLE:
+                logger.warning(
+                    f"[{platform_name}] HTTP {response.status_code} from {url} "
+                    f"— non-retryable, skipping."
+                )
+                return None
+
+            # Server errors → retry
+            if response.status_code >= 500:
+                logger.warning(
+                    f"[{platform_name}] HTTP {response.status_code} (attempt {attempt}/{max_retries})"
+                )
+                if attempt < max_retries:
+                    _sleep = backoff_base ** attempt
+                    time.sleep(_sleep)
+                    continue
+                return None
+
+            # Rate-limited → back off and retry
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("Retry-After", backoff_base ** attempt))
+                logger.warning(
+                    f"[{platform_name}] Rate-limited (429). Waiting {retry_after}s..."
+                )
+                time.sleep(retry_after)
+                continue
+
+            response.raise_for_status()
+            return response
+
+        except requests.exceptions.Timeout:
+            logger.warning(f"[{platform_name}] Timeout (attempt {attempt}/{max_retries})")
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"[{platform_name}] Connection error (attempt {attempt}/{max_retries})")
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"[{platform_name}] Request error: {e} (attempt {attempt}/{max_retries})")
+
+        if attempt < max_retries:
+            time.sleep(backoff_base ** attempt)
+
+    logger.error(f"[{platform_name}] All {max_retries} attempts failed for {url}")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Job data model
+# ---------------------------------------------------------------------------
 
 @dataclass
 class Job:
@@ -74,6 +165,10 @@ class Job:
         }
 
 
+# ---------------------------------------------------------------------------
+# Base scraper
+# ---------------------------------------------------------------------------
+
 class BaseScraper(ABC):
     """Abstract base class for all job scrapers."""
     
@@ -97,3 +192,20 @@ class BaseScraper(ABC):
         """Check if this scraper is enabled in config."""
         scraper_config = self.config.get('scraping', {}).get(self.platform_name.lower(), {})
         return scraper_config.get('enabled', True)
+
+    def safe_scrape(self) -> List[Job]:
+        """
+        Wrapper that catches ALL exceptions so one broken scraper never
+        crashes the pipeline.  Returns [] on failure.
+        """
+        if not self.is_enabled():
+            logger.info(f"[{self.platform_name}] Scraper is disabled — skipping")
+            return []
+
+        try:
+            return self.scrape()
+        except Exception as e:
+            error_msg = f"[{self.platform_name}] Scraper crashed: {e}"
+            logger.error(error_msg, exc_info=True)
+            self.errors.append(error_msg)
+            return []

@@ -15,7 +15,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 from src.utils.logger import setup_logger
-from src.scrapers import BundesagenturScraper, ArbeitnowScraper, RemoteOKScraper
+from src.scrapers import (
+    BundesagenturScraper, ArbeitnowScraper, RemoteOKScraper,
+    JobicyScraper, TheMuseScraper, WeWorkRemotelyScraper, AdzunaScraper,
+)
 from src.filters import RelevanceFilter, ExperienceFilter
 from src.scorer import JobScorer
 from src.database import JobDatabase
@@ -49,11 +52,15 @@ def main(test_mode: bool = False):
     db = JobDatabase(config.get('database', {}).get('path', 'jobs.db'))
     notifier = TelegramNotifier(config)
     
-    # Initialize scrapers
+    # Initialize ALL scrapers — each is modular and isolated
     scrapers = [
         BundesagenturScraper(config),
         ArbeitnowScraper(config),
-        RemoteOKScraper(config)
+        RemoteOKScraper(config),
+        JobicyScraper(config),
+        TheMuseScraper(config),
+        WeWorkRemotelyScraper(config),
+        AdzunaScraper(config),
     ]
     
     # Initialize filters
@@ -66,21 +73,21 @@ def main(test_mode: bool = False):
     # Collect all errors
     all_errors = []
     
-    # Step 1: Scrape jobs from all sources
+    # Step 1: Scrape jobs from all sources (resilient — never crashes)
     logger.info("\n" + "=" * 50)
     logger.info("PHASE 1: SCRAPING")
     logger.info("=" * 50)
     
     all_jobs = []
     for scraper in scrapers:
-        try:
-            jobs = scraper.scrape()
-            all_jobs.extend(jobs)
-            all_errors.extend(scraper.errors)
-        except Exception as e:
-            error_msg = f"{scraper.platform_name}: {str(e)}"
-            logger.error(f"Scraper failed: {error_msg}")
-            all_errors.append(error_msg)
+        # safe_scrape() catches ALL exceptions — pipeline always continues
+        jobs = scraper.safe_scrape()
+        all_jobs.extend(jobs)
+        all_errors.extend(scraper.errors)
+        if jobs:
+            logger.info(f"   ✅ {scraper.platform_name}: {len(jobs)} jobs")
+        elif scraper.errors:
+            logger.warning(f"   ⚠️ {scraper.platform_name}: failed ({len(scraper.errors)} errors)")
     
     logger.info(f"\n📊 Total scraped: {len(all_jobs)} jobs from all sources")
     
@@ -120,21 +127,30 @@ def main(test_mode: bool = False):
     logger.info("PHASE 5: NOTIFICATIONS")
     logger.info("=" * 50)
     
-    unsent_jobs = db.get_unsent_jobs()
+    unsent_jobs = db.get_unsent_jobs()  # Already sorted by total_score DESC
     logger.info(f"Unsent jobs to notify: {len(unsent_jobs)}")
     
     if unsent_jobs or all_errors:
-        # In test mode, limit notifications
+        # Determine how many top jobs to send via Telegram
+        telegram_limit = config.get('notification', {}).get('telegram', {}).get('daily_top_n', 15)
+        
         if test_mode:
-            unsent_jobs = unsent_jobs[:5]
-            logger.info(f"Test mode: limiting to {len(unsent_jobs)} jobs")
+            telegram_limit = min(telegram_limit, 5)
+            logger.info(f"Test mode: limiting Telegram to {telegram_limit} jobs")
         
-        success = notifier.send_sync(unsent_jobs, all_errors if all_errors else None)
+        # Only the top N jobs go to Telegram
+        telegram_jobs = unsent_jobs[:telegram_limit]
+        logger.info(f"📱 Telegram digest: top {len(telegram_jobs)} of {len(unsent_jobs)} unsent jobs")
         
-        if success and unsent_jobs:
-            # Mark jobs as sent
-            job_hashes = [j['job_hash'] for j in unsent_jobs]
-            db.mark_jobs_as_sent(job_hashes)
+        success = notifier.send_sync(telegram_jobs, all_errors if all_errors else None)
+        
+        if success:
+            # Mark ALL unsent jobs as sent (not just the ones sent to Telegram)
+            # This prevents them from piling up for the next run.
+            # All jobs remain visible on the webapp regardless.
+            all_hashes = [j['job_hash'] for j in unsent_jobs]
+            db.mark_jobs_as_sent(all_hashes)
+            logger.info(f"Marked all {len(unsent_jobs)} jobs as sent (Telegram received top {len(telegram_jobs)})")
     else:
         logger.info("No new jobs to send")
     

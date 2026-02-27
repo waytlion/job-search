@@ -110,8 +110,9 @@ class TelegramNotifier:
         current_chunk = ""
         current_job_count = 0
         
-        header = f"🎯 <b>Daily Job Report - {datetime.now().strftime('%B %d, %Y')}</b>\n"
-        header += f"Found <b>{len(jobs)} new jobs</b> matching your criteria!\n\n"
+        header = f"🏆 <b>Daily Top {len(jobs)} Jobs - {datetime.now().strftime('%B %d, %Y')}</b>\n"
+        header += f"Highest-scored jobs from today's scraping run!\n"
+        header += f"📊 Check the webapp for the full list of all jobs.\n\n"
         header += "━" * 20 + "\n\n"
         
         current_chunk = header

@@ -1,9 +1,8 @@
-import requests
 import time
 from typing import List, Optional
 from datetime import datetime
 import html2text
-from .base import BaseScraper, Job
+from .base import BaseScraper, Job, resilient_request
 from src.utils.logger import get_logger
 
 logger = get_logger()
@@ -59,28 +58,24 @@ class ArbeitnowScraper(BaseScraper):
     
     def _fetch_page(self, page: int) -> List[Job]:
         """Fetch a single page of jobs."""
-        params = {"page": page}
+        response = resilient_request(
+            self.BASE_URL,
+            params={"page": page},
+            timeout=30,
+            platform_name=self.platform_name,
+        )
         
-        try:
-            response = requests.get(
-                self.BASE_URL,
-                params=params,
-                timeout=30
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            jobs = []
-            for item in data.get('data', []):
-                job = self._parse_job(item)
-                if job:
-                    jobs.append(job)
-            
-            return jobs
-            
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Request failed for page {page}: {e}")
-            raise
+        if response is None:
+            return []
+        
+        data = response.json()
+        jobs = []
+        for item in data.get('data', []):
+            job = self._parse_job(item)
+            if job:
+                jobs.append(job)
+        
+        return jobs
     
     def _parse_job(self, item: dict) -> Optional[Job]:
         """Parse a single job item from the API response."""

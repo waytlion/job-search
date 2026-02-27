@@ -19,8 +19,8 @@ class TestBundesagenturScraper:
         scraper = BundesagenturScraper(config)
         assert scraper.platform_name == "bundesagentur"
     
-    @patch('src.scrapers.bundesagentur.requests.get')
-    def test_parse_job(self, mock_get, config):
+    @patch('src.scrapers.bundesagentur.resilient_request')
+    def test_parse_job(self, mock_request, config):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -32,7 +32,7 @@ class TestBundesagenturScraper:
                 'modifikationsTimestamp': '2024-01-30T10:00:00Z'
             }]
         }
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
         
         scraper = BundesagenturScraper(config)
         jobs = scraper._fetch_jobs("Data Scientist", "Berlin", 50, 100)
@@ -49,8 +49,8 @@ class TestArbeitnowScraper:
         scraper = ArbeitnowScraper(config)
         assert scraper.platform_name == "arbeitnow"
     
-    @patch('src.scrapers.arbeitnow.requests.get')
-    def test_parse_job(self, mock_get, config):
+    @patch('src.scrapers.arbeitnow.resilient_request')
+    def test_parse_job(self, mock_request, config):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -65,7 +65,7 @@ class TestArbeitnowScraper:
                 'created_at': 1706601600
             }]
         }
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
         
         scraper = ArbeitnowScraper(config)
         jobs = scraper._fetch_page(1)
@@ -81,8 +81,8 @@ class TestRemoteOKScraper:
         scraper = RemoteOKScraper(config)
         assert scraper.platform_name == "remoteok"
     
-    @patch('src.scrapers.remoteok.requests.get')
-    def test_parse_job(self, mock_get, config):
+    @patch('src.scrapers.remoteok.resilient_request')
+    def test_parse_job(self, mock_request, config):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -100,7 +100,7 @@ class TestRemoteOKScraper:
                 'date': '2024-01-30'
             }
         ]
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
         
         scraper = RemoteOKScraper(config)
         jobs = scraper._fetch_tag('data')
@@ -140,3 +140,59 @@ class TestJobHash:
         
         # Different title = different hash
         assert job1.job_hash != job3.job_hash
+
+
+class TestSafeScrape:
+    """Test that safe_scrape never crashes the pipeline."""
+    
+    def test_safe_scrape_catches_exceptions(self, config):
+        """safe_scrape should catch any exception and return empty list."""
+        scraper = ArbeitnowScraper(config)
+        
+        # Force an exception inside scrape()
+        with patch.object(scraper, 'scrape', side_effect=RuntimeError("API exploded")):
+            result = scraper.safe_scrape()
+        
+        assert result == []
+        assert len(scraper.errors) > 0
+        assert "crashed" in scraper.errors[0].lower()
+    
+    def test_safe_scrape_respects_disabled(self, config):
+        """safe_scrape should skip disabled scrapers."""
+        config['scraping']['arbeitnow']['enabled'] = False
+        scraper = ArbeitnowScraper(config)
+        
+        result = scraper.safe_scrape()
+        assert result == []
+
+
+class TestResilientRequest:
+    """Test the resilient_request helper."""
+    
+    @patch('src.scrapers.base.requests.request')
+    def test_returns_none_on_403(self, mock_req):
+        """403 (bot detection) should return None immediately."""
+        from src.scrapers.base import resilient_request
+        
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_req.return_value = mock_resp
+        
+        result = resilient_request("https://blocked.com", platform_name="test")
+        assert result is None
+        # Should NOT retry — only 1 call
+        assert mock_req.call_count == 1
+    
+    @patch('src.scrapers.base.requests.request')
+    def test_returns_response_on_200(self, mock_req):
+        """200 should return the response."""
+        from src.scrapers.base import resilient_request
+        
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_req.return_value = mock_resp
+        
+        result = resilient_request("https://ok.com", platform_name="test")
+        assert result is not None
+        assert result.status_code == 200

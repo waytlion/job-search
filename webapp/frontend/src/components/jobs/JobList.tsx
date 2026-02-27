@@ -24,10 +24,11 @@ export function JobList({ jobs, total, page, totalPages, onPageChange, onJobClic
             <p className="text-gray-500">No jobs match your filters</p>
           </div>
         ) : (
-          jobs.map((job) => (
+          jobs.map((job, index) => (
             <JobCard
               key={job.id}
               job={job}
+              rank={(page - 1) * 20 + index + 1}
               onClick={() => onJobClick(job)}
               onStatusChange={onStatusChange}
             />
@@ -41,7 +42,7 @@ export function JobList({ jobs, total, page, totalPages, onPageChange, onJobClic
           <div className="text-sm text-gray-600">
             Page {page} of {totalPages} ({total.toLocaleString()} total jobs)
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => onPageChange(page - 1)}
@@ -50,7 +51,7 @@ export function JobList({ jobs, total, page, totalPages, onPageChange, onJobClic
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            
+
             {/* Page numbers */}
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -64,23 +65,22 @@ export function JobList({ jobs, total, page, totalPages, onPageChange, onJobClic
                 } else {
                   pageNum = page - 2 + i
                 }
-                
+
                 return (
                   <button
                     key={pageNum}
                     onClick={() => onPageChange(pageNum)}
-                    className={`w-8 h-8 rounded-lg text-sm font-medium ${
-                      pageNum === page
+                    className={`w-8 h-8 rounded-lg text-sm font-medium ${pageNum === page
                         ? 'bg-primary-600 text-white'
                         : 'hover:bg-gray-100 text-gray-700'
-                    }`}
+                      }`}
                   >
                     {pageNum}
                   </button>
                 )
               })}
             </div>
-            
+
             <button
               onClick={() => onPageChange(page + 1)}
               disabled={page >= totalPages}
