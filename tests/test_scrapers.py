@@ -41,6 +41,36 @@ class TestBundesagenturScraper:
         assert jobs[0].title == 'Data Scientist'
         assert jobs[0].company == 'Test Company'
         assert 'Berlin' in jobs[0].location
+        assert '?id=abc123' in jobs[0].url
+    
+    def test_parse_job_rejects_missing_hash(self, config):
+        """Jobs without hashId or refnr must be rejected to prevent broken URLs."""
+        scraper = BundesagenturScraper(config)
+        
+        item_no_ids = {
+            'titel': 'Some Job',
+            'arbeitgeber': 'Some Company',
+            'arbeitsort': {'ort': 'Berlin'},
+            # No hashId, no refnr
+        }
+        
+        result = scraper._parse_job(item_no_ids)
+        assert result is None, "Jobs without hashId/refnr should be rejected"
+    
+    def test_parse_job_rejects_empty_hash(self, config):
+        """Jobs with empty hashId and empty refnr must be rejected."""
+        scraper = BundesagenturScraper(config)
+        
+        item_empty = {
+            'titel': 'Some Job',
+            'arbeitgeber': 'Some Company',
+            'arbeitsort': {'ort': 'Berlin'},
+            'hashId': '',
+            'refnr': '',
+        }
+        
+        result = scraper._parse_job(item_empty)
+        assert result is None, "Jobs with empty hashId/refnr should be rejected"
 
 
 class TestArbeitnowScraper:

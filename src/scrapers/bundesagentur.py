@@ -109,16 +109,21 @@ class BundesagenturScraper(BaseScraper):
                 location = f"{arbeitsort.get('plz')} {location}"
             
             # Build job URL — validate hashId and use refnr as fallback
-            hash_id = item.get('hashId', '')
-            refnr = item.get('refnr', '')
+            hash_id = (item.get('hashId') or '').strip()
+            refnr = (item.get('refnr') or '').strip()
             
             if hash_id:
                 url = f"https://www.arbeitsagentur.de/jobsuche/suche?id={hash_id}"
             elif refnr:
                 url = f"https://www.arbeitsagentur.de/jobsuche/suche?was={refnr}"
             else:
-                # Skip jobs with no linkable ID
+                # Skip jobs with no linkable ID — prevents broken URLs
                 logger.debug("Skipping job without hashId or refnr")
+                return None
+            
+            # Final URL validation: ensure we have a real query parameter
+            if '=' not in url:
+                logger.debug(f"Skipping job with invalid URL: {url}")
                 return None
             
             # Parse date
