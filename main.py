@@ -135,7 +135,7 @@ def main(test_mode: bool = False):
         telegram_limit = config.get('notification', {}).get('telegram', {}).get('daily_top_n', 15)
         
         if test_mode:
-            telegram_limit = min(telegram_limit, 5)
+            telegram_limit = min(telegram_limit, 15)
             logger.info(f"Test mode: limiting Telegram to {telegram_limit} jobs")
         
         # Only the top N jobs go to Telegram
