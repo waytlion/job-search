@@ -13,6 +13,7 @@
 - **Web App**: Built a functional Next.js + FastAPI dashboard and successfully rendered LLM scoring reasoning cards directly on the frontend.
 
 ## TODO: 
+- refine llm prompt to get better results (my context is very heavy on eenergy x ML think about softening energy just more broad focus on potential upside max)
 ### Big Stuff
 - [ ] **Cross-platform deduplication** — Same job posted on multiple sites is currently stored twice. We should perhaps group these.
 - [ ] **Job expiry detection** — Re-check if old jobs are still live, auto-archive expired ones instead of manually filtering them.
