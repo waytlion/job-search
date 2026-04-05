@@ -43,7 +43,9 @@ class JobDatabase:
         
         years_experience_required INTEGER,
         filtered_out BOOLEAN DEFAULT 0,
-        filter_reason TEXT
+        filter_reason TEXT,
+        llm_score REAL,
+        llm_reasoning TEXT
     );
     
     CREATE INDEX IF NOT EXISTS idx_job_hash ON jobs(job_hash);
@@ -61,6 +63,17 @@ class JobDatabase:
         """Initialize the database schema."""
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript(self.SCHEMA)
+            
+            # Migrations for new columns
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN llm_score REAL;")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                conn.execute("ALTER TABLE jobs ADD COLUMN llm_reasoning TEXT;")
+            except sqlite3.OperationalError:
+                pass
+                
             conn.commit()
         logger.debug(f"Database initialized at {self.db_path}")
     
@@ -89,15 +102,17 @@ class JobDatabase:
                             salary_min, salary_max, salary_currency, salary_text,
                             posted_date, scraped_at,
                             money_score, passion_score, location_score, total_score,
-                            years_experience_required, filtered_out, filter_reason
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            years_experience_required, filtered_out, filter_reason,
+                            llm_score, llm_reasoning
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         job.job_hash, job.title, job.company, job.location, job.url, job.platform,
                         job.description, job.requirements, ','.join(job.tags) if job.tags else None,
                         job.salary_min, job.salary_max, job.salary_currency, job.salary_text,
                         job.posted_date, job.scraped_at.isoformat(),
                         job.money_score, job.passion_score, job.location_score, job.total_score,
-                        job.years_experience_required, job.filtered_out, job.filter_reason
+                        job.years_experience_required, job.filtered_out, job.filter_reason,
+                        job.llm_score, job.llm_reasoning
                     ))
                 except sqlite3.IntegrityError:
                     # Duplicate, skip

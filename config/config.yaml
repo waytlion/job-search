@@ -1,295 +1,291 @@
-scraping:
-  # Bundesagentur settings
-  bundesagentur:
+database:
+  path: jobs.db
+  retention_days: 90
+filtering:
+  experience_penalty_points: 2
+  experience_penalty_threshold: 5
+  hard_filter_experience_years: 10
+  hard_filter_keywords:
+  - head of
+  - chief
+  - cto
+  - ceo
+  - cfo
+  - vp of
+  - vice president
+  - director of
+  - geschäftsführer
+  - vorstand
+  irrelevant_keywords:
+  - driver
+  - fahrer
+  - retail
+  - verkauf
+  - sales assistant
+  - warehouse
+  - lager
+  - delivery
+  - kurier
+  - cashier
+  - kasse
+  - cleaner
+  - reinigung
+  - security guard
+  - sicherheitsdienst
+  - kitchen
+  - küche
+  - waiter
+  - kellner
+  - barista
+  - receptionist
+  - empfang
+  - housekeeping
+  - zimmermädchen
+  - truck
+  - lkw
+  - forklift
+  - gabelstapler
+  job_types:
+  - full-time
+  - vollzeit
+  - festanstellung
+  user_experience_years: 4
+logging:
+  file: logs/scraper.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+notification:
+  telegram:
+    daily_top_n: 15
+    include_summary: true
+    max_jobs_per_message: 15
+    max_message_length: 4000
+    sort_by: score
+scoring:
+  llm_evaluator:
+    candidate_profile: 'Candidate Profile Summary:
+
+      M.Sc. Data Science (GPA 1.1, Leipzig University) with a background in Industrial
+      Engineering and Computer Science. Currently completing a Master''s Thesis at
+      Stony Brook University on Foundation Models for electricity grids.
+
+      Key Expertise: 4+ years at Fraunhofer FIT specializing in energy optimization
+      and data analysis. Lead-authored research for a €100M project that directly
+      influenced German grid fee policy (BNetzA). Proficient in Python, PyTorch, Gurobi,
+      and SQL.
+
+      Core Strengths: Bridging the gap between advanced Operations Research (OR) and
+      modern Machine Learning (ML). Experienced in delivering production-ready optimization
+      tools for EV charging and global logistics.
+
+
+      Search Criteria:
+
+      1. Role Types: Data Scientist (ML/Specialist), Machine Learning Engineer, Quantitative
+      Researcher (Energy/Trading), or Optimization Specialist. High interest in "Founding
+      Engineer" or early-stage technical roles.
+
+      2. Domain Focus: Energy Transition, Climate Tech, Smart Grids, and Electricity
+      Markets. Specifically looking for roles involving forecasting, optimal power
+      flow, or foundation models for infrastructure.
+
+      3. Company Environment: Prioritizing "best-in-class" talent density and research-heavy
+      engineering teams. Prefers high-growth startups or specialized AI units over
+      generalist corporate roles.
+
+      4. Location: Primarily Munich, Germany (Hybrid/Office).
+
+      5. Seniority/Impact: Seeking roles that offer tangible real-world impact and
+      high autonomy. Packages should reflect specialized expertise in ML/Optimization.
+
+      '
     enabled: true
-    locations:
-      - "Berlin"
-      - "Leipzig"
-      - "Dresden"
-      - "München"
-      - "Augsburg"
-      - "Nürnberg"
-      - "Erlangen"
-    radius_km: 50
+    model: moonshotai/kimi-k2.5
+    top_k_to_evaluate: 200
+  location:
+    default_score: 2
+    tier1_bavaria:
+      keywords:
+      - munich
+      - münchen
+      - augsburg
+      - nuremberg
+      - nürnberg
+      - erlangen
+      - regensburg
+      - würzburg
+      - bavaria
+      - bayern
+      score: 10
+    tier2_preferred_germany:
+      keywords:
+      - berlin
+      - leipzig
+      - dresden
+      - hamburg
+      - frankfurt
+      - stuttgart
+      - cologne
+      - köln
+      - düsseldorf
+      score: 8
+    tier3_germany:
+      keywords:
+      - germany
+      - deutschland
+      score: 6
+    tier4_remote:
+      keywords:
+      - remote
+      - home office
+      - hybrid
+      - worldwide
+      - anywhere
+      score: 7
+    tier5_europe:
+      keywords:
+      - europe
+      - eu
+      - austria
+      - switzerland
+      - netherlands
+      score: 4
+  money:
+    currency_conversion:
+      CHF: 1.02
+      EUR: 1.0
+      GBP: 1.17
+      USD: 0.92
+    salary_thresholds:
+      average: 40000
+      excellent: 80000
+      good: 50000
+      great: 65000
+    seniority_keywords:
+      high:
+      - senior
+      - lead
+      - principal
+      - staff
+      medium:
+      - mid-level
+      - intermediate
+      - experienced
+  passion:
+    energy_keywords:
+    - energy
+    - renewable
+    - grid
+    - power
+    - electricity
+    - utilities
+    - energiewende
+    - solar
+    - wind
+    - battery
+    - e-mobility
+    - charging
+    - smart grid
+    - energie
+    - strom
+    - netz
+    energy_max: 7
+    energy_points: 4
+    ml_keywords:
+    - machine learning
+    - deep learning
+    - optimization
+    - transformer
+    - neural network
+    - artificial intelligence
+    - computer vision
+    - nlp
+    - natural language
+    - reinforcement learning
+    - data science
+    - predictive
+    - forecasting
+    - ml
+    - ai
+    ml_max: 6
+    ml_points: 3
+    tech_keywords:
+    - startup
+    - scale-up
+    - innovation
+    - research
+    - r&d
+    - cutting-edge
+    - state-of-the-art
+    - forschung
+    tech_max: 3
+    tech_points: 1
+    title_weight_multiplier: 2.0
+  weights:
+    location: 0.20
+    money: 0.15
+    passion: 0.25
+    llm: 0.40
+scraping:
+  adzuna:
+    countries:
+    - de
+    - gb
+    enabled: true
+    max_pages: 2
+    results_per_page: 50
     search_terms:
-      - "Data Scientist"
-      - "Machine Learning"
-      - "Data Engineer"
-      - "ML Engineer"
-      - "Data Analyst"
-      - "Business Intelligence"
-      - "Product Manager"
-      - "Business Development"
-    results_per_page: 100
-    fetch_descriptions: true      # Fetch full job descriptions for better scoring
-    max_description_fetches: 50   # Limit to avoid rate-limiting
-  
-  # Arbeitnow settings
+    - data scientist
+    - machine learning engineer
   arbeitnow:
     enabled: true
     max_pages: 5
-  
-  # RemoteOK settings
+  bundesagentur:
+    enabled: true
+    fetch_descriptions: true
+    locations:
+    - Berlin
+    - Leipzig
+    - Dresden
+    - München
+    - Augsburg
+    - Nürnberg
+    - Erlangen
+    max_description_fetches: 50
+    radius_km: 50
+    results_per_page: 100
+    search_terms:
+    - Data Scientist
+    - Machine Learning
+    - Data Engineer
+    - ML Engineer
+    - Data Analyst
+    - Business Intelligence
+    - Product Manager
+    - Business Development
+  jobicy:
+    enabled: true
+    results_per_tag: 50
+    tags:
+    - data-science
+    - machine-learning
+    - python
+    - data-engineering
   remoteok:
     enabled: true
     tags:
-      - "data"
-      - "python"
-      - "machine-learning"
-  
-  # Jobicy settings (remote jobs, no API key needed)
-  jobicy:
-    enabled: true
-    tags:
-      - "data-science"
-      - "machine-learning"
-      - "python"
-      - "data-engineering"
-    results_per_tag: 50
-  
-  # The Muse settings (tech company jobs, no API key needed)
+    - data
+    - python
+    - machine-learning
   themuse:
-    enabled: true
     categories:
-      - "Data Science"
-      - "Data and Analytics"
-      - "Software Engineering"
+    - Data Science
+    - Data and Analytics
+    - Software Engineering
+    enabled: true
     max_pages: 3
-  
-  # WeWorkRemotely settings (RSS feeds, no API key needed)
   weworkremotely:
     enabled: true
     feeds:
-      - "https://weworkremotely.com/categories/remote-programming-jobs.rss"
-      - "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss"
-  
-  # Adzuna settings (requires free API key from https://developer.adzuna.com/)
-  # Set ADZUNA_APP_ID and ADZUNA_APP_KEY in .env to enable
-  adzuna:
-    enabled: true
-    countries:
-      - "de"           # Germany
-      - "gb"           # UK
-    search_terms:
-      - "data scientist"
-      - "machine learning engineer"
-    max_pages: 2
-    results_per_page: 50
-
-filtering:
-  # Baseline relevance filter - REMOVE these job types
-  irrelevant_keywords:
-    - "driver"
-    - "fahrer"
-    - "retail"
-    - "verkauf"
-    - "sales assistant"
-    - "warehouse"
-    - "lager"
-    - "delivery"
-    - "kurier"
-    - "cashier"
-    - "kasse"
-    - "cleaner"
-    - "reinigung"
-    - "security guard"
-    - "sicherheitsdienst"
-    - "kitchen"
-    - "küche"
-    - "waiter"
-    - "kellner"
-    - "barista"
-    - "receptionist"
-    - "empfang"
-    - "housekeeping"
-    - "zimmermädchen"
-    - "truck"
-    - "lkw"
-    - "forklift"
-    - "gabelstapler"
-  
-  # Hard filter - these roles are way too senior
-  hard_filter_keywords:
-    - "head of"
-    - "chief"
-    - "cto"
-    - "ceo"
-    - "cfo"
-    - "vp of"
-    - "vice president"
-    - "director of"
-    - "geschäftsführer"
-    - "vorstand"
-  
-  # Experience thresholds
-  user_experience_years: 4
-  hard_filter_experience_years: 10
-  experience_penalty_threshold: 5
-  experience_penalty_points: 2
-  
-  # Only full-time positions
-  job_types:
-    - "full-time"
-    - "vollzeit"
-    - "festanstellung"
-
-scoring:
-  weights:
-    money: 0.33
-    passion: 0.34
-    location: 0.33
-  
-  # Money scoring (0-10 scale)
-  money:
-    salary_thresholds:
-      excellent: 80000
-      great: 65000
-      good: 50000
-      average: 40000
-    
-    seniority_keywords:
-      high:
-        - "senior"
-        - "lead"
-        - "principal"
-        - "staff"
-      medium:
-        - "mid-level"
-        - "intermediate"
-        - "experienced"
-    
-    currency_conversion:
-      USD: 0.92
-      GBP: 1.17
-      CHF: 1.02
-      EUR: 1.0
-  
-  # Passion scoring (0-10 scale)
-  passion:
-    energy_keywords:
-      - "energy"
-      - "renewable"
-      - "grid"
-      - "power"
-      - "electricity"
-      - "utilities"
-      - "energiewende"
-      - "solar"
-      - "wind"
-      - "battery"
-      - "e-mobility"
-      - "charging"
-      - "smart grid"
-      - "energie"
-      - "strom"
-      - "netz"
-    
-    ml_keywords:
-      - "machine learning"
-      - "deep learning"
-      - "optimization"
-      - "transformer"
-      - "neural network"
-      - "artificial intelligence"
-      - "computer vision"
-      - "nlp"
-      - "natural language"
-      - "reinforcement learning"
-      - "data science"
-      - "predictive"
-      - "forecasting"
-      - "ml"
-      - "ai"
-    
-    tech_keywords:
-      - "startup"
-      - "scale-up"
-      - "innovation"
-      - "research"
-      - "r&d"
-      - "cutting-edge"
-      - "state-of-the-art"
-      - "forschung"
-    
-    # Points per match
-    energy_points: 4
-    energy_max: 7
-    ml_points: 3
-    ml_max: 6
-    tech_points: 1
-    tech_max: 3
-    
-    # Title weight multiplier when description is missing
-    title_weight_multiplier: 2.0
-  
-  # Location scoring (0-10 scale)
-  location:
-    tier1_bavaria:
-      score: 10
-      keywords:
-        - "munich"
-        - "münchen"
-        - "augsburg"
-        - "nuremberg"
-        - "nürnberg"
-        - "erlangen"
-        - "regensburg"
-        - "würzburg"
-        - "bavaria"
-        - "bayern"
-    
-    tier2_preferred_germany:
-      score: 8
-      keywords:
-        - "berlin"
-        - "leipzig"
-        - "dresden"
-        - "hamburg"
-        - "frankfurt"
-        - "stuttgart"
-        - "cologne"
-        - "köln"
-        - "düsseldorf"
-    
-    tier3_germany:
-      score: 6
-      keywords:
-        - "germany"
-        - "deutschland"
-    
-    tier4_remote:
-      score: 7
-      keywords:
-        - "remote"
-        - "home office"
-        - "hybrid"
-        - "worldwide"
-        - "anywhere"
-    
-    tier5_europe:
-      score: 4
-      keywords:
-        - "europe"
-        - "eu"
-        - "austria"
-        - "switzerland"
-        - "netherlands"
-    
-    default_score: 2
-
-notification:
-  telegram:
-    max_message_length: 4000
-    max_jobs_per_message: 15
-    daily_top_n: 15            # Only send the top N scored jobs to Telegram each day
-    sort_by: "score"
-    include_summary: true
-
-database:
-  path: "jobs.db"
-  retention_days: 90
-
-logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "logs/scraper.log"
+    - https://weworkremotely.com/categories/remote-programming-jobs.rss
+    - https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss

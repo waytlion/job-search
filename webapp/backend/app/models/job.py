@@ -41,6 +41,9 @@ class JobBase(BaseModel):
     filtered_out: Optional[bool] = False
     filter_reason: Optional[str] = None
     
+    llm_score: Optional[float] = None
+    llm_reasoning: Optional[str] = None
+    
     user_status: Optional[str] = "not_viewed"
     user_notes: Optional[str] = None
     user_updated_at: Optional[str] = None
@@ -66,6 +69,9 @@ class JobListItem(BaseModel):
     passion_score: Optional[float] = 0
     location_score: Optional[float] = 0
     total_score: Optional[float] = 0
+    
+    llm_score: Optional[float] = None
+    llm_reasoning: Optional[str] = None
     
     user_status: Optional[str] = "not_viewed"
     

@@ -12,6 +12,7 @@ interface JobFiltersProps {
 
 const sortOptions = [
   { value: 'total_score', label: 'Total Score' },
+  { value: 'llm_score', label: 'AI Score' },
   { value: 'money_score', label: 'Money Score' },
   { value: 'passion_score', label: 'Passion Score' },
   { value: 'location_score', label: 'Location Score' },

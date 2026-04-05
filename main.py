@@ -23,6 +23,7 @@ from src.filters import RelevanceFilter, ExperienceFilter
 from src.scorer import JobScorer
 from src.database import JobDatabase
 from src.notifier import TelegramNotifier
+from src.reranker import LLMEvaluator
 
 
 def load_config(config_path: str = "config/config.yaml") -> dict:
@@ -69,6 +70,7 @@ def main(test_mode: bool = False):
     
     # Initialize scorer
     scorer = JobScorer(config)
+    llm_evaluator = LLMEvaluator(config)
     
     # Collect all errors
     all_errors = []
@@ -110,6 +112,20 @@ def main(test_mode: bool = False):
     logger.info("=" * 50)
     
     all_jobs = scorer.score_jobs(all_jobs)
+    
+    # Phase 3.5: LLM Evaluation
+    if config.get('scoring', {}).get('llm_evaluator', {}).get('enabled', False):
+        logger.info("\n" + "=" * 50)
+        logger.info("PHASE 3.5: LLM RE-RANKING")
+        logger.info("=" * 50)
+        
+        # Only evaluate valid jobs
+        valid_jobs = [j for j in all_jobs if not j.filtered_out]
+        filtered_jobs = [j for j in all_jobs if j.filtered_out]
+        
+        valid_jobs = llm_evaluator.evaluate_jobs(valid_jobs)
+        
+        all_jobs = valid_jobs + filtered_jobs
     
     # Step 4: Check for duplicates and insert new jobs
     logger.info("\n" + "=" * 50)

@@ -81,6 +81,7 @@ class JobScorer:
     
     def _calculate_passion_score(self, job: Job) -> float:
         """Calculate passion score (0-10)."""
+        import re
         score = 0.0
         passion_config = self.scoring_config.get('passion', {})
         
@@ -98,24 +99,32 @@ class JobScorer:
             text = title_text
         else:
             text = full_text
+            
+        def count_matches(keywords, target_text):
+            count = 0
+            for kw in keywords:
+                pattern = re.compile(rf"\b{re.escape(kw)}\b", re.IGNORECASE)
+                if pattern.search(target_text):
+                    count += 1
+            return count
         
         # Energy keywords
         energy_keywords = passion_config.get('energy_keywords', [])
-        energy_matches = sum(1 for kw in energy_keywords if kw.lower() in text)
+        energy_matches = count_matches(energy_keywords, text)
         energy_points = passion_config.get('energy_points', 4)
         energy_max = passion_config.get('energy_max', 7)
         score += min(energy_matches * energy_points * multiplier, energy_max)
         
         # ML/AI keywords
         ml_keywords = passion_config.get('ml_keywords', [])
-        ml_matches = sum(1 for kw in ml_keywords if kw.lower() in text)
+        ml_matches = count_matches(ml_keywords, text)
         ml_points = passion_config.get('ml_points', 3)
         ml_max = passion_config.get('ml_max', 6)
         score += min(ml_matches * ml_points * multiplier, ml_max)
         
         # Tech keywords
         tech_keywords = passion_config.get('tech_keywords', [])
-        tech_matches = sum(1 for kw in tech_keywords if kw.lower() in text)
+        tech_matches = count_matches(tech_keywords, text)
         tech_points = passion_config.get('tech_points', 1)
         tech_max = passion_config.get('tech_max', 3)
         score += min(tech_matches * tech_points * multiplier, tech_max)

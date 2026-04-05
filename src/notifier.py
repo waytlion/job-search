@@ -78,6 +78,9 @@ class TelegramNotifier:
         
         card += f"🔗 <a href=\"{job['url']}\">Apply</a>\n"
         
+        if job.get('llm_reasoning'):
+            card += f"✨ <b>AI Fit:</b> {self._escape_html(job['llm_reasoning'])}\n"
+        
         # Tags/indicators
         indicators = []
         if job.get('passion_score', 0) >= 6:

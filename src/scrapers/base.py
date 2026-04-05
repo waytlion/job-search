@@ -131,6 +131,10 @@ class Job:
     filtered_out: bool = False
     filter_reason: Optional[str] = None
     
+    # LLM Evaluation
+    llm_score: Optional[float] = None
+    llm_reasoning: Optional[str] = None
+    
     @property
     def job_hash(self) -> str:
         """Generate unique hash for deduplication."""
@@ -161,7 +165,9 @@ class Job:
             'total_score': self.total_score,
             'years_experience_required': self.years_experience_required,
             'filtered_out': self.filtered_out,
-            'filter_reason': self.filter_reason
+            'filter_reason': self.filter_reason,
+            'llm_score': self.llm_score,
+            'llm_reasoning': self.llm_reasoning
         }
 
 

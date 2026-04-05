@@ -7,9 +7,10 @@ Automated job scraper that fetches opportunities from **7 platforms**, scores th
 - **7 Job Sources**: Bundesagentur für Arbeit, Arbeitnow, RemoteOK, Jobicy, The Muse, WeWorkRemotely, Adzuna (optional)
 - **Smart Filtering**: Removes irrelevant jobs (drivers, retail, etc.)
 - **Experience Parsing**: Filters/penalizes jobs requiring too much experience
-- **Custom Scoring**: Ranks jobs by money, passion (energy/ML), and location (0–10 scale)
-- **Telegram Top-N Digest**: Only the top 15 highest-scored new jobs per day — no more notification spam
-- **Web Dashboard**: Browse, filter, and rank all jobs with score breakdowns and rank badges
+- **Custom Heuristics**: Pre-ranks jobs by money, passion (energy/data science), and location (0–10 scale)
+- **AI Semantic Reranker**: Automatically passes the Top-50 jobs to the NVIDIA APIs (`kimi-k2-5`) LLM to be carefully queried against your detailed resume and criteria.
+- **Telegram Top-N Digest**: Only the top 15 highest-scored new jobs per day — no more notification spam. Includes AI Reasoning cards!
+- **Web Dashboard**: Browse, filter, and rank all jobs with score breakdowns, full descriptions, and LLM evaluations.
 - **Resilient Pipeline**: Each scraper is isolated — one failing/blocked platform never crashes the others
 - **Duplicate Detection**: SQLite database tracks seen jobs
 - **GitHub Actions**: Fully automated daily runs at 8 AM UTC
@@ -63,6 +64,7 @@ Open `http://localhost:3000` to browse all jobs ranked by score with `#1`, `#2`,
    - Go to Settings → Secrets and variables → Actions
    - Add `TELEGRAM_BOT_TOKEN`
    - Add `TELEGRAM_CHAT_ID`
+   - Add `NVIDIA_API_KEY` (Required for the semantic AI Re-ranker)
 
 2. **Enable Actions:**
    - The daily scrape runs automatically at 8 AM UTC
@@ -150,9 +152,10 @@ Jobs are scored on a 0–10 scale across three dimensions:
 
 | Dimension | Weight | What it measures |
 |-----------|--------|------------------|
-| 💰 Money | 33% | Salary + seniority level |
-| ❤️ Passion | 34% | Energy sector + ML/AI keywords |
-| 📍 Location | 33% | Bavaria > Germany > Remote |
+| 💰 Money | 15% | Salary + seniority level |
+| ❤️ Passion | 25% | Energy sector + ML/AI keywords (Strict Regex) |
+| 📍 Location | 20% | Bavaria > Germany > Remote |
+| ✨ AI LLM | 40% | Context-aware fit evaluation powered by NVIDIA API |
 
 ### Telegram Digest
 

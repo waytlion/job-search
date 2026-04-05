@@ -106,7 +106,17 @@ export function JobCard({ job, rank, onClick, onStatusChange }: JobCardProps) {
               <MapPin className="w-3 h-3 text-blue-500" />
               {job.location_score.toFixed(1)}
             </span>
+            {job.llm_score != null && (
+              <span className="flex items-center gap-1 font-medium" title="AI LLM Score">
+                ✨ {job.llm_score.toFixed(1)}
+              </span>
+            )}
           </div>
+          {job.llm_reasoning && (
+             <div className="mt-2 text-xs italic text-gray-700 bg-purple-50 p-1.5 rounded border border-purple-100">
+               ✨ <span className="font-medium text-purple-900">AI Match:</span> {job.llm_reasoning}
+             </div>
+          )}
         </div>
 
         {/* Right side - Score and actions */}

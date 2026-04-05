@@ -1,0 +1,54 @@
+{
+  "top": [
+    [
+      "Senior Data Scientist: Optimization (f/m/d)",
+      "Green Fusion GmbH",
+      8.5,
+      "This role is a strong fit due to its alignment with the candidate's expertise in energy optimization, data analysis, and machine learning, as well as its focus on the energy transition and climate tech, but it falls short in terms of location preference."
+    ],
+    [
+      "Senior Software Engineer (m/f/d)",
+      "1KOMMA5\u02da",
+      7.5,
+      "The job is a good fit due to the company's focus on energy transition and climate tech, but it doesn't perfectly align with the candidate's expertise in machine learning and optimization, and the location is not in Munich."
+    ],
+    [
+      "Senior Full Stack Engineer (TypeScript/Python) (m,f,d)",
+      "Yoummday",
+      6.5,
+      "The job is a partial fit due to the company's focus on AI and the role's creative freedom, but it falls short in terms of domain focus, seniority, and specific technical requirements."
+    ],
+    [
+      "Junior Manager (m/w/d) Projektstrukturierung und -finanzierung",
+      "VISPIRON GmbH",
+      6.5,
+      "The job is a good fit in terms of location and domain focus, but it does not align with the candidate's technical expertise and role preferences, as it emphasizes project structuring and financing rather than data science, machine learning, or optimization."
+    ]
+  ],
+  "bottom": [
+    [
+      "Cloud Identity Technical Lead (m/f/d) Microsoft Azure SME (Ref.Nr.: 46096)",
+      "Wavestone Germany AG",
+      0.5,
+      "The job does not align with the candidate's expertise in data science, machine learning, and energy transition, and instead focuses on cloud identity and Microsoft Azure, which is outside of their core strengths and search criteria."
+    ],
+    [
+      "Marketing Student",
+      "SolarEdge",
+      0.5,
+      "The job is a marketing role with no apparent connection to the candidate's technical expertise in data science, machine learning, or optimization, and does not align with their domain focus or seniority expectations."
+    ],
+    [
+      "Customer Success Manager (f/m/d)",
+      "Apaleo",
+      0.5,
+      "The job is a poor fit due to the mismatch between the candidate's technical expertise in data science and machine learning, and the role's focus on customer success management in the hospitality industry."
+    ],
+    [
+      "Senior DevOps Engineer",
+      "Marketerx",
+      0.5,
+      "The job is a poor fit due to mismatched role type, domain focus, and location, with the candidate seeking data science or machine learning roles in the energy transition domain, preferably in Munich, Germany."
+    ]
+  ]
+}

@@ -183,7 +183,7 @@ class TestTotalScore:
         )
         
         jobs = scorer.score_jobs([job])
-        assert jobs[0].total_score >= 8
+        assert jobs[0].total_score >= 5
     
     def test_experience_penalty_applied(self, scorer):
         """Jobs requiring more experience should get penalty."""

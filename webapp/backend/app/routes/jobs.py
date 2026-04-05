@@ -86,7 +86,7 @@ async def get_jobs(
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     
     # Validate sort column
-    valid_sort_columns = ["total_score", "money_score", "passion_score", "location_score", 
+    valid_sort_columns = ["total_score", "llm_score", "money_score", "passion_score", "location_score", 
                           "title", "company", "location", "scraped_at", "posted_date"]
     if sort not in valid_sort_columns:
         sort = "total_score"
@@ -106,7 +106,7 @@ async def get_jobs(
     query = f"""
         SELECT id, job_hash, title, company, location, url, platform,
                salary_text, posted_date, money_score, passion_score,
-               location_score, total_score, user_status
+               location_score, total_score, user_status, llm_score, llm_reasoning
         FROM jobs 
         WHERE {where_clause}
         ORDER BY {sort} {order_dir}
@@ -132,7 +132,9 @@ async def get_jobs(
             passion_score=row[10] or 0,
             location_score=row[11] or 0,
             total_score=row[12] or 0,
-            user_status=row[13] or "not_viewed"
+            user_status=row[13] or "not_viewed",
+            llm_score=row[14],
+            llm_reasoning=row[15]
         ))
     
     return JobsResponse(
@@ -154,7 +156,7 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
                posted_date, scraped_at,
                money_score, passion_score, location_score, total_score,
                years_experience_required, filtered_out, filter_reason,
-               user_status, user_notes, user_updated_at
+               user_status, user_notes, user_updated_at, llm_score, llm_reasoning
         FROM jobs WHERE id = :job_id
     """
     
@@ -190,7 +192,9 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
         filter_reason=row[22],
         user_status=row[23] or "not_viewed",
         user_notes=row[24],
-        user_updated_at=row[25]
+        user_updated_at=row[25],
+        llm_score=row[26],
+        llm_reasoning=row[27]
     )
 
 

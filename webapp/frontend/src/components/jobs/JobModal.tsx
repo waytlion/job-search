@@ -123,7 +123,7 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
             ) : jobDetail ? (
               <div className="space-y-6">
                 {/* Score Cards */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                   <div className={clsx('p-4 rounded-lg border text-center', getScoreColor(jobDetail.total_score))}>
                     <Star className="w-5 h-5 mx-auto mb-1" />
                     <div className="text-2xl font-bold">{jobDetail.total_score.toFixed(1)}</div>
@@ -144,7 +144,21 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
                     <div className="text-2xl font-bold">{jobDetail.location_score.toFixed(1)}</div>
                     <div className="text-xs opacity-75">Location</div>
                   </div>
+                  <div className="p-4 rounded-lg border bg-purple-50 border-purple-200 text-purple-700 text-center">
+                    <span className="text-xl mx-auto mb-1 block">✨</span>
+                    <div className="text-2xl font-bold">{jobDetail.llm_score !== null ? jobDetail.llm_score.toFixed(1) : '-'}</div>
+                    <div className="text-xs opacity-75">AI Score</div>
+                  </div>
                 </div>
+
+                {jobDetail.llm_reasoning && (
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-lg p-4">
+                    <h3 className="text-sm font-bold text-purple-900 mb-1 flex items-center gap-2">
+                       ✨ AI Evaluation
+                    </h3>
+                    <p className="text-sm text-purple-800">{jobDetail.llm_reasoning}</p>
+                  </div>
+                )}
 
                 {/* Status and Actions */}
                 <div className="flex items-center gap-4">
